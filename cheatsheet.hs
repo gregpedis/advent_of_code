@@ -197,9 +197,25 @@ _ = myAdd 1 2
 -- Where
 -- TODO
 
--- Let
--- TODO
+-- Let bindings
+-- Expressions that _let_ you bind values at any point in a function.
+-- They are very local, meaning their scoped is very limited, e.g. only on the current guard.
+multiply x y = let result = x * y in result
+
+-- Since they are expressions, they can be used anywhere.
+_ = 4 * (let a = 9 in a + 1) + 2
+
+-- Can define more than one binding, on the same level of identation.
+multiplyThenAdd x y z =
+  let p = x * y
+      result = p + z
+   in result
+
+-- Can be nested.
+multiplyThenMultiply x y z =
+  let p1 = x * y
+   in let p2 = p1 * z
+       in p2
 
 -- Case
 -- TODO
-
