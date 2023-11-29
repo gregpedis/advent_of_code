@@ -187,3 +187,19 @@ _ = 1 `myAdd` 2
 _ = (+) 1 2
 
 _ = myAdd 1 2
+
+-- Pattern matching
+-- TODO
+
+-- Guards
+-- TODO
+
+-- Where
+-- TODO
+
+-- Let
+-- TODO
+
+-- Case
+-- TODO
+
