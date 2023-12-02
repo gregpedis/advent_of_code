@@ -1,6 +1,5 @@
 import Data.Char (isDigit)
 import Data.List (isInfixOf)
-import Data.Maybe ()
 import Data.Text (pack, strip, unpack)
 
 main = do
@@ -16,7 +15,7 @@ main = do
 
 solve_1 lines = sum . map id' $ filter isValid $ map parseLine lines
 
-solve_2 lines = 0
+solve_2 lines = sum $ map (power . parseLine) lines
 
 parseLine line = Game {id' = gameId, red = maximum reds, green = maximum greens, blue = maximum blues}
   where
@@ -34,6 +33,8 @@ parseRound r = (red, green, blue)
     red = getAmount "red"
     green = getAmount "green"
     blue = getAmount "blue"
+
+power game = red game * green game * blue game
 
 isValid game = red game <= 12 && green game <= 13 && blue game <= 14
 
