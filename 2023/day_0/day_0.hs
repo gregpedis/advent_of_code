@@ -1,6 +1,5 @@
 import Data.Char (isSpace)
 import Data.List (sort)
-import Data.Maybe ()
 
 main = do
   let filePath = "day_0.txt"
