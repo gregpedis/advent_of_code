@@ -41,6 +41,7 @@ def check_location(grid, x,y):
   return False
 
 # PART_2
+
 def get_gears(grid):
   gears = []
   for x in range(len(grid)):
