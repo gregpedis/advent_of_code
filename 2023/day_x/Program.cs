@@ -1,4 +1,4 @@
 ﻿using day_x;
 
 
-Day25.Solve();
+Day18.Solve();
