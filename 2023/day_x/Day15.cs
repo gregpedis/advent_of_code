@@ -66,7 +66,7 @@ internal static class Day15
 			}
 
 		}
-		throw new Exception("what the fuck is this input");
+		throw new NotImplementedException("what the fuck is this input");
 	}
 
 	private static LoopPoint FindNextPoint(string[] grid, LoopPoint current, LoopPoint previous)
@@ -108,7 +108,7 @@ internal static class Day15
 			}
 		}
 
-		throw new Exception("what the fuck is this input");
+		throw new NotImplementedException("what the fuck is this input");
 	}
 
 	#region MOVEMENT

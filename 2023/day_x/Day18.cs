@@ -1,149 +1,47 @@
-﻿using System.Linq;
-
+﻿using System.Numerics;
 
 namespace day_x;
 
 internal static class Day18
 {
-	static Dictionary<Direction, Func<Point, string, Point>> NextSteps = new()
-	{
-		{  Direction.Up, (p, rgb) => new (p.X-1, p.Y, rgb)},
-		{  Direction.Down, (p, rgb) => new (p.X+1, p.Y, rgb)},
-		{  Direction.Left, (p, rgb) => new (p.X, p.Y-1, rgb)},
-		{  Direction.Right, (p, rgb) => new (p.X, p.Y+1, rgb)},
-	};
-
 	public static void Solve()
 	{
 		var rows = InputReader.ReadRows("Day18.txt");
-		var instructions = ParseInput(rows);
 
-		var res = Part1(instructions);
-		Console.WriteLine($"Enclosed points count: {res}");
+		var part1 = Shoelace(ParseInput1(rows));
+		Console.WriteLine($"Total surface area: {part1}");
+
+		var part2 = Shoelace(ParseInput2(rows));
+		Console.WriteLine($"Total surface area: {part2}");
 	}
 
-	static int Part1(List<Instruction> instructions)
+	static BigInteger Shoelace(List<Instruction> instructions)
 	{
-		var grid = CreateGrid(instructions);
-		PrintGrid(grid);
+		(BigInteger, BigInteger) previous = (0, 0);
 
-		Console.WriteLine();
-		FixInside(grid);
-		PrintGrid(grid);
+		BigInteger inside = 0;
+		BigInteger outside = 0;
 
-		return -1;
-	}
-
-	static void FixInside(Point[][] grid)
-	{
-		for (int i = 0; i < grid.Length; i++)
-		{
-			for (int j = 0; j < grid[0].Length; j++)
-			{
-				if (grid[i][j] is null && IsInside(grid, i, j))
-				{
-					grid[i][j] = new(i, j, string.Empty, true);
-				}
-			}
-		}
-	}
-
-	// TODO: Maybe do it in every direction?
-	// TODO: Flood fill? Either from a guaranteed inside point, or just flood fill the outside.
-	static bool IsInside(Point[][] grid, int x, int y)
-	{
-		// start as inside
-		var intersections = 0;
-		// need to know if we hit a continuous line
-		var previousTrench = false;
-
-		var steps = x;
-		for (int i = 1; i <= steps; i++)
-		{
-			x -= 1;
-			if (grid[x][y] is { } trench && !trench.Inside)
-			{
-				if (!previousTrench)
-				{
-					intersections++;
-					previousTrench = true;
-				}
-			}
-			else
-			{
-				previousTrench = false;
-			}
-		}
-
-		return intersections % 2 == 1;
-	}
-
-	static Point[][] CreateGrid(List<Instruction> instructions)
-	{
-		var points = new List<Point>();
-
-		var currentPoint = new Point(0, 0, string.Empty);
 		foreach (var instr in instructions)
 		{
-			var callback = NextSteps[instr.Heading];
-
-			for (int i = 0; i < instr.Steps; i++)
+			var next = instr.Heading switch
 			{
-				currentPoint = callback(currentPoint, instr.RGB);
-				points.Add(currentPoint);
-			}
+				Direction.Up => (previous.Item1 - instr.Steps, previous.Item2),
+				Direction.Down => (previous.Item1 + instr.Steps, previous.Item2),
+				Direction.Right => (previous.Item1, previous.Item2 + instr.Steps),
+				Direction.Left => (previous.Item1, previous.Item2 - instr.Steps),
+				_ => throw new NotImplementedException("wtf"),
+			};
+
+			inside += previous.Item1 * next.Item2 - previous.Item2 * next.Item1;
+			outside += instr.Steps;
+			previous = next;
 		}
 
-		var grid = ToGrid(points);
-
-		return grid;
+		return (BigInteger.Abs(inside) + outside) / 2 + 1;
 	}
 
-	static void PrintGrid(Point[][] grid)
-	{
-		for (int i = 0; i < grid.Length; i++)
-		{
-			for (int j = 0; j < grid[0].Length; j++)
-			{
-				var v = grid[i][j] is null ? '.' : '#';
-				Console.Write(v);
-			}
-			Console.WriteLine();
-		}
-	}
-
-	static Point[][] ToGrid(List<Point> points)
-	{
-		var minX = points.Select(p => p.X).Min();
-		var minY = points.Select(p => p.Y).Min();
-
-		var normalized = points
-			.Select(p => new Point(p.X - minX, p.Y - minY, p.RGB))
-			.ToList();
-
-		var grid = new List<Point[]>();
-		for (int i = 0; i <= normalized.MaxBy(p => p.X).X; i++)
-		{
-			var row = new List<Point>();
-			for (int j = 0; j <= normalized.MaxBy(p => p.Y).Y; j++)
-			{
-				if (normalized.FirstOrDefault(p => p.X == i && p.Y == j) is { } p)
-				{
-					row.Add(p);
-				}
-				else
-				{
-					row.Add(null);
-				}
-
-			}
-			grid.Add([.. row]);
-		}
-
-		return [.. grid];
-	}
-
-	static List<Instruction> ParseInput(string[] instructions)
+	static List<Instruction> ParseInput1(string[] instructions)
 	{
 		var res = new List<Instruction>();
 
@@ -167,8 +65,30 @@ internal static class Day18
 		return res;
 	}
 
+	static List<Instruction> ParseInput2(string[] instructions)
+	{
+		var res = new List<Instruction>();
 
-	record class Point(int X, int Y, string RGB, bool Inside = false);
+		foreach (var data in instructions)
+		{
+			var splitted = data.Split(' ');
+			var rgb = splitted[2][1..^1];
+
+			var direction = rgb[^1] switch
+			{
+				'0' => Direction.Right,
+				'1' => Direction.Down,
+				'2' => Direction.Left,
+				'3' => Direction.Up,
+				_ => throw new NotImplementedException("wtf")
+			};
+
+			var steps = Convert.ToInt32(rgb[1..^1], 16);
+			res.Add(new(direction, steps, string.Empty));
+		}
+
+		return res;
+	}
 
 	record struct Instruction(Direction Heading, int Steps, string RGB);
 
