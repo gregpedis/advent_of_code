@@ -1,7 +1,4 @@
-﻿using System.Linq;
-using System.Text.Json.Nodes;
-
-namespace day_x;
+﻿namespace day_x;
 
 internal static class Day17
 {
@@ -39,9 +36,19 @@ internal static class Day17
 		while (pq.Count > 0)
 		{
 			var current = pq.Dequeue();
-			foreach (var next in Neighbours(current, points, cameFrom))
+			if (IsGoal(points, current))
 			{
-				var newCost = costSoFar[current] + points[next.X][next.Y];
+				break;
+			}
+
+			foreach (var (next, cost) in Neighbours(current, points, cameFrom))
+			{
+				if (next == cameFrom[current])
+				{
+					continue;
+				}
+
+				var newCost = costSoFar[current] + cost;
 				if (!costSoFar.TryGetValue(next, out var oldCost) || newCost < oldCost)
 				{
 					costSoFar[next] = newCost;
@@ -51,43 +58,91 @@ internal static class Day17
 			}
 		}
 
-		return costSoFar.FirstOrDefault(kv => IsGoal(points, kv.Key)).Value;
+		var res = costSoFar.FirstOrDefault(kv => IsGoal(points, kv.Key));
+
+		var path = new List<Point>();
+		Point? here = res.Key;
+		while (here is not null)
+		{
+			path.Add(here.Value);
+			here = cameFrom[here.Value];
+		}
+
+		for (int i = 0; i < points.Length; i++)
+		{
+			for (int j = 0; j < points[0].Length; j++)
+			{
+				if (path.Any(x => x.X == i && x.Y == j))
+				{
+					Console.Write(points[i][j]);
+				}
+				else
+				{
+					Console.Write('.');
+				}
+			}
+			Console.WriteLine();
+		}
+
+		return res.Value;
 	}
 
-	private static IEnumerable<Point> Neighbours(
+	private static IEnumerable<(Point, int)> Neighbours(
 		Point p, int[][] points, Dictionary<Point, Point?> cameFrom)
 	{
-		if (p.X > 0 && LessThanThree((p1, p2) => p1.Y == p2.Y))
+		var before = cameFrom[p];
+		if (before is null || before.Value.Y != p.Y)
 		{
-			yield return new Point(p.X - 1, p.Y);
-		}
-		if (p.X < points.Length - 1 && LessThanThree((p1, p2) => p1.Y == p2.Y))
-		{
-			yield return new Point(p.X + 1, p.Y);
-		}
-
-		if (p.Y > 0 && LessThanThree((p1, p2) => p1.X == p2.X))
-		{
-			yield return new Point(p.X, p.Y - 1);
-		}
-		if (p.Y < points[0].Length - 1 && LessThanThree((p1, p2) => p1.X == p2.X))
-		{
-			yield return new Point(p.X, p.Y + 1);
-		}
-
-		bool LessThanThree(Func<Point, Point, bool> straightLineComparer)
-		{
-			if (cameFrom.TryGetValue(p, out var previous)
-				&& previous.HasValue
-				&& straightLineComparer(p, previous.Value)
-				&& cameFrom.TryGetValue(previous.Value, out var previousPrevious)
-				&& previousPrevious.HasValue
-				&& straightLineComparer(p, previousPrevious.Value))
+			var cost = 0;
+			foreach (var offset in Enumerable.Range(1, 3))
 			{
-				return false;
+				var next = new Point(p.X - offset, p.Y);
+				if (InBounds(next))
+				{
+					cost += points[next.X][next.Y];
+					yield return (next, cost);
+				}
 			}
-			return true;
+			cost = 0;
+			foreach (var offset in Enumerable.Range(1, 3))
+			{
+				var next = new Point(p.X + offset, p.Y);
+				if (InBounds(next))
+				{
+					cost += points[next.X][next.Y];
+					yield return (next, cost);
+				}
+			}
 		}
+		if (before is null || before.Value.X != p.X)
+		{
+			var cost = 0;
+			foreach (var offset in Enumerable.Range(1, 3))
+			{
+				var next = new Point(p.X, p.Y - offset);
+				if (InBounds(next))
+				{
+					cost += points[next.X][next.Y];
+					yield return (next, cost);
+				}
+			}
+			cost = 0;
+			foreach (var offset in Enumerable.Range(1, 3))
+			{
+				var next = new Point(p.X, p.Y + offset);
+				if (InBounds(next))
+				{
+					cost += points[next.X][next.Y];
+					yield return (next, cost);
+				}
+			}
+		}
+
+		bool InBounds(Point p) =>
+			p.X >= 0
+			&& p.Y >= 0
+			&& p.X < points.Length
+			&& p.Y < points[0].Length;
 	}
 	private static bool IsGoal(int[][] points, Point p) =>
 		p.X == points.Length - 1 && p.Y == points[0].Length - 1;
