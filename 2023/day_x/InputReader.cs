@@ -4,8 +4,7 @@ namespace day_x;
 
 internal static class InputReader
 {
-	private const string PREFIX = """E:\repos\playground_haskell\2023\day_x\input""";
-
+	private const string PREFIX = """/home/greg/repos/advent_of_code_2023/2023/day_x/input""";
 	public static string ReadRaw(string filename)
 	{
 		var fullPath = Path.Combine(PREFIX, filename);
