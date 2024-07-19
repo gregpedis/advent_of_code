@@ -1,10 +1,15 @@
-# Advent of Code 2023
+# Advent of Code
 
-Written purely in Haskell
+Written in python, haskell and C#.
+
+## Years
+
+- 2022
+- 2023
 
 ## How-to
 
-The easiest way to run a day's solution is:
+The easiest way to run a day's solution in haskell is:
 
 - `cd day_XX/`
 - `ghci day_XX.hs`
