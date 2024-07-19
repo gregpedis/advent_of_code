@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "day_x": {
+      "commandName": "Project"
+    },
+    "WSL": {
+      "commandName": "WSL2",
+      "distributionName": ""
+    }
+  }
+}

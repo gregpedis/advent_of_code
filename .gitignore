@@ -138,6 +138,7 @@ obj/
 # Configuration files
 appsettings.json
 appsettings.Development.json
+*.csproj.user
 
 # npm packages
 node_modules/
