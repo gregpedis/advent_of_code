@@ -6,134 +6,96 @@ internal static class Day17
 	{
 		var rows = InputReader.ReadRows("Day17.txt");
 
-		var part1 = Dijkstra(ParseInput1(rows));
+		Console.WriteLine("START");
+		var part1 = PriorityBFS(ParseInput1(rows), Neighbours1);
 		Console.WriteLine($"Total steps: {part1}");
+
+		var part2 = PriorityBFS(ParseInput1(rows), Neighbours2);
+		Console.WriteLine($"Total steps: {part2}");
 	}
 
 	private static int[][] ParseInput1(string[] rows)
 	{
 		var res = new List<int[]>();
-
 		foreach (var row in rows)
 		{
-			res.Add(row.Select(x => x - '0').ToArray());
+			res.Add([.. row.Select(x => x - '0')]);
 		}
-
-		return res.ToArray();
+		return [.. res];
 	}
 
-	private static int Dijkstra(int[][] points)
-	{
-		var pq = new PriorityQueue<Point, int>();
-		var start = new Point(0, 0);
-		pq.Enqueue(start, 0);
 
-		Dictionary<Point, Point?> cameFrom = new();
-		Dictionary<Point, int> costSoFar = new();
-		cameFrom[start] = null;
-		costSoFar[start] = 0;
+	private static int PriorityBFS(
+		int[][] points,
+		Func<Point, Point?, int[][], IEnumerable<Point>> neighbours)
+	{
+		var pq = new PriorityQueue<(Point, Point?, int), int>();
+		HashSet<(Point, Point?)> visited = new();
+
+		var start = new Point(0, 0);
+		pq.Enqueue((start, null, 0), 0);
 
 		while (pq.Count > 0)
 		{
-			var current = pq.Dequeue();
+			var (current, previous, cost) = pq.Dequeue();
 			if (IsGoal(points, current))
 			{
-				break;
+				return cost;
 			}
-
-			foreach (var (next, cost) in Neighbours(current, points, cameFrom))
+			foreach (var next in neighbours(current, previous, points))
 			{
-				if (next == cameFrom[current])
+				if (visited.Contains((next, current)))
 				{
 					continue;
 				}
-
-				var newCost = costSoFar[current] + cost;
-				if (!costSoFar.TryGetValue(next, out var oldCost) || newCost < oldCost)
-				{
-					costSoFar[next] = newCost;
-					pq.Enqueue(next, newCost);
-					cameFrom[next] = current;
-				}
+				var newCost = cost + TravelCost(current, next, points);
+				pq.Enqueue((next, current, newCost), newCost);
+				visited.Add((next, current));
 			}
 		}
-
-		var res = costSoFar.FirstOrDefault(kv => IsGoal(points, kv.Key));
-
-		var path = new List<Point>();
-		Point? here = res.Key;
-		while (here is not null)
-		{
-			path.Add(here.Value);
-			here = cameFrom[here.Value];
-		}
-
-		for (int i = 0; i < points.Length; i++)
-		{
-			for (int j = 0; j < points[0].Length; j++)
-			{
-				if (path.Any(x => x.X == i && x.Y == j))
-				{
-					Console.Write(points[i][j]);
-				}
-				else
-				{
-					Console.Write('.');
-				}
-			}
-			Console.WriteLine();
-		}
-
-		return res.Value;
+		throw new NotImplementedException("wtf");
 	}
 
-	private static IEnumerable<(Point, int)> Neighbours(
-		Point p, int[][] points, Dictionary<Point, Point?> cameFrom)
+	// Move 1 to 3 blocks
+	private static IEnumerable<Point> Neighbours1(Point current, Point? previous, int[][] points) =>
+		Neighbours(current, previous, points, 1, 3);
+
+	// Move 4 to 10 blocks
+	private static IEnumerable<Point> Neighbours2(Point current, Point? previous, int[][] points) =>
+		Neighbours(current, previous, points, 4, 7);
+
+	private static IEnumerable<Point> Neighbours(
+		Point current, Point? previous, int[][] points, int minOffset, int count)
 	{
-		var before = cameFrom[p];
-		if (before is null || before.Value.Y != p.Y)
+		if (previous is null || previous.Value.X != current.X)
 		{
-			var cost = 0;
-			foreach (var offset in Enumerable.Range(1, 3))
+			foreach (var offset in Enumerable.Range(minOffset, count))
 			{
-				var next = new Point(p.X - offset, p.Y);
-				if (InBounds(next))
+				var nextLeft = new Point(current.X, current.Y - offset);
+				var nextRight = new Point(current.X, current.Y + offset);
+				if (InBounds(nextLeft))
 				{
-					cost += points[next.X][next.Y];
-					yield return (next, cost);
+					yield return nextLeft;
 				}
-			}
-			cost = 0;
-			foreach (var offset in Enumerable.Range(1, 3))
-			{
-				var next = new Point(p.X + offset, p.Y);
-				if (InBounds(next))
+				if (InBounds(nextRight))
 				{
-					cost += points[next.X][next.Y];
-					yield return (next, cost);
+					yield return nextRight;
 				}
 			}
 		}
-		if (before is null || before.Value.X != p.X)
+		if (previous is null || previous.Value.Y != current.Y)
 		{
-			var cost = 0;
-			foreach (var offset in Enumerable.Range(1, 3))
+			foreach (var offset in Enumerable.Range(minOffset, count))
 			{
-				var next = new Point(p.X, p.Y - offset);
-				if (InBounds(next))
+				var nextUp = new Point(current.X - offset, current.Y);
+				var nextDown = new Point(current.X + offset, current.Y);
+				if (InBounds(nextUp))
 				{
-					cost += points[next.X][next.Y];
-					yield return (next, cost);
+					yield return nextUp;
 				}
-			}
-			cost = 0;
-			foreach (var offset in Enumerable.Range(1, 3))
-			{
-				var next = new Point(p.X, p.Y + offset);
-				if (InBounds(next))
+				if (InBounds(nextDown))
 				{
-					cost += points[next.X][next.Y];
-					yield return (next, cost);
+					yield return nextDown;
 				}
 			}
 		}
@@ -144,8 +106,34 @@ internal static class Day17
 			&& p.X < points.Length
 			&& p.Y < points[0].Length;
 	}
+
+	private static int TravelCost(Point from, Point to, int[][] points)
+	{
+		if (from.X == to.X)
+		{
+			var maxOffset = Math.Abs(from.Y - to.Y) - 1;
+			var minY = Math.Min(from.Y, to.Y);
+			return Enumerable.Range(1, maxOffset)
+				.Select(offset => points[from.X][minY + offset])
+				.Sum() + points[to.X][to.Y];
+		}
+		else if (from.Y == to.Y)
+		{
+			var maxOffset = Math.Abs(from.X - to.X) - 1;
+			var minX = Math.Min(from.X, to.X);
+			return Enumerable.Range(1, maxOffset)
+				.Select(offset => points[minX + offset][from.Y])
+				.Sum() + points[to.X][to.Y];
+		}
+		else
+		{
+			throw new NotImplementedException("wtf");
+		}
+	}
+
 	private static bool IsGoal(int[][] points, Point p) =>
-		p.X == points.Length - 1 && p.Y == points[0].Length - 1;
+		p.X == points.Length - 1
+		&& p.Y == points[0].Length - 1;
 
 	record struct Point(int X, int Y);
 }
