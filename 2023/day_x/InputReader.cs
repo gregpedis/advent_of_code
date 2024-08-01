@@ -1,7 +1,4 @@
-﻿using System.Data.Common;
-using System.Runtime.InteropServices;
-
-namespace day_x;
+﻿namespace day_x;
 
 internal static class InputReader
 {
