@@ -1,270 +1,165 @@
 ﻿using System.Numerics;
-using System.Text;
 
 namespace day_x;
 
 internal static class Day21
 {
-	private const string BROADCASTER = "broadcaster";
-	private const int BUTTON_PRESS_COUNT = 1_000;
-	public static Queue<WorkItem> ToProcess = new();
-
-	public static BigInteger LowPulses = 0;
-	public static BigInteger HighPulses = 0;
-	public static BigInteger ButtonPresses = 0;
+	private const char STARTING = 'S';
+	private const char INVALID = '#';
+	private const int TOTAL_STEPS = 64;
+	private const int TOTAL_STEPS2 = 26501365;
 
 	public static void Solve()
 	{
 		var rows = InputReader.ReadRows("Day21.txt");
-		var modules = ParseInput(rows);
-
-		PrintDiagram(modules);
-		Console.WriteLine(Part1(modules));
-		Console.WriteLine(Part2(modules));
+		Console.WriteLine(Part1(rows));
+		Console.WriteLine(Part2(rows));
 	}
 
-	private static BigInteger Part1(Dictionary<string, Module> modules)
+	private static int Part1(string[] rows)
 	{
-		for (int i = 0; i < BUTTON_PRESS_COUNT; i++)
-		{
-			ToProcess.Enqueue(new("button", BROADCASTER, Pulse.Low));
+		return FloodFill(rows, TOTAL_STEPS, Neighbours1, IsValid);
 
-			while (ToProcess.TryDequeue(out var item))
-			{
-				if (item.Pulse is Pulse.Low)
-				{
-					LowPulses++;
-				}
-				else
-				{
-					HighPulses++;
-				}
-				if (modules.TryGetValue(item.Destination, out var destination))
-				{
-					destination.Receive(item.Pulse, item.Source);
-				}
-			}
-		}
-
-		return LowPulses * HighPulses;
+		static bool IsValid(Point p, string[] rows) =>
+			rows[p.X][p.Y] != INVALID;
 	}
 
-	// This will never end.
-	// The diagram is a sequence of 4 distinct sub-graphs.
-	// Each sub-graph ends with the last NAND "on", meaning sending a low signal at a different cycle.
-	// The cycles are prime numbers, so you just need to multiply them.
-	// See the printed message for each NAND.
-	private static BigInteger Part2(Dictionary<string, Module> modules)
+	// https://www.reddit.com/r/adventofcode/comments/18nevo3/comment/kebnr7e/
+	// https://en.wikipedia.org/wiki/Lagrange_polynomial
+	private static BigInteger Part2(string[] rows)
 	{
-		foreach (var module in modules.Values)
-		{
-			module.Reset();
-		}
+		// [65, 196, 327]
+		var x1 = rows.Length / 2;
+		var x2 = x1 + rows.Length;
+		var x3 = x2 + rows.Length;
 
-		while (true)
-		{
-			ToProcess.Enqueue(new("button", BROADCASTER, Pulse.Low));
-			ButtonPresses++;
+		// [3944, 35082, 97230]
+		BigInteger fx1 = FloodFill(rows, x1, (p, _, _) => Neighbours2(p), IsValid);
+		BigInteger fx2 = FloodFill(rows, x2, (p, _, _) => Neighbours2(p), IsValid);
+		BigInteger fx3 = FloodFill(rows, x3, (p, _, _) => Neighbours2(p), IsValid);
 
-			while (ToProcess.TryDequeue(out var item))
-			{
-				if (item.Destination == "rx" && item.Pulse is Pulse.Low)
-				{
-					return ButtonPresses;
-				}
-				if (modules.TryGetValue(item.Destination, out var destination))
-				{
-					destination.Receive(item.Pulse, item.Source);
-				}
-			}
-		}
-	}
-
-	private static void PrintDiagram(Dictionary<string, Module> modules)
-	{
-		var sb = new StringBuilder();
-		sb.AppendLine("""digraph "Modules" {""");
-
-		var visited = new HashSet<string>();
-		var queue = new Queue<Module>();
-		queue.Enqueue(modules[BROADCASTER]);
-
-		while (queue.TryDequeue(out var current))
-		{
-			if (visited.Contains(current.Id))
-			{
-				continue;
-			}
-			visited.Add(current.Id);
-			var id = current.Id == BROADCASTER
-				? BROADCASTER
-				: current is FlipFlop
-					? current.Id + "_FF"
-					: current.Id + "_NAND";
-
-			foreach (var destId in current.Destinations)
-			{
-				if (modules.TryGetValue(destId, out var dest))
-				{
-					var dest_Id = dest.Id == BROADCASTER
-						? BROADCASTER
-						: dest is FlipFlop
-							? dest.Id + "_FF"
-							: dest.Id + "_NAND";
-
-					sb.AppendLine($"{id} -> {dest_Id}");
-					queue.Enqueue(dest);
-				}
-				else
-				{
-					sb.AppendLine($"{id} -> {destId}");
-				}
-			}
-		}
-
-		sb.AppendLine("}");
-
-		Console.WriteLine(sb.ToString());
-	}
-
-	private static Dictionary<string, Module> ParseInput(string[] rows)
-	{
-		var wips = rows.Select(ParseRow).ToList();
-
-		var res = new Dictionary<string, Module>();
-		foreach (var wip in wips)
-		{
-			var sources = wips.Where(x => x.Destinations.Contains(wip.Id)).Select(x => x.Id);
-
-			Module module = wip.Type switch
-			{
-				ModuleType.Broadcaster => new Broadcaster(wip.Id, [.. wip.Destinations]),
-				ModuleType.FlipFlop => new FlipFlop(wip.Id, [.. wip.Destinations]),
-				ModuleType.Conjuction => new Conjuction(wip.Id, [.. wip.Destinations], [.. sources]),
-				_ => throw new NotImplementedException()
-			};
-			res[module.Id] = module;
-		}
+		var arg1 = fx1 * (TOTAL_STEPS2 - x2) / (x1 - x2) * (TOTAL_STEPS2 - x3) / (x1 - x3);
+		var arg2 = fx2 * (TOTAL_STEPS2 - x1) / (x2 - x1) * (TOTAL_STEPS2 - x3) / (x2 - x3);
+		var arg3 = fx3 * (TOTAL_STEPS2 - x1) / (x3 - x1) * (TOTAL_STEPS2 - x2) / (x3 - x2);
+		var res = arg1 + arg2 + arg3;
 
 		return res;
+
+		static bool IsValid(Point p, string[] rows)
+		{
+			var modX = p.X % rows.Length;
+			var modY = p.Y % rows[0].Length;
+
+			var newX = modX < 0
+				? rows.Length + modX
+				: modX;
+
+			var newY = modY < 0
+				? rows[0].Length + modY
+				: modY;
+
+			return rows[newX][newY] != INVALID;
+		}
 	}
 
-	private static WorkInProgress ParseRow(string row)
+	private static int FloodFill(
+		string[] rows,
+		int totalSteps,
+		Func<Point, int, int, IEnumerable<Point>> neighbours,
+		Func<Point, string[], bool> isValid
+		)
 	{
-		if (row.StartsWith(BROADCASTER))
+		var visited = new HashSet<Point>();
+		var valid = new HashSet<Point>();
+		List<Point> frontier = [FindStartingLocation(rows)];
+
+		for (int i = 1; i <= totalSteps; i++)
 		{
-			return new(ModuleType.Broadcaster, BROADCASTER, Destinations());
-		}
-		else if (row.StartsWith('%'))
-		{
-			var id = row.Substring(1, row.IndexOf('-') - 1).Trim();
-			return new(ModuleType.FlipFlop, id, Destinations());
-		}
-		else
-		{
-			var id = row.Substring(1, row.IndexOf('-') - 1).Trim();
-			return new(ModuleType.Conjuction, id, Destinations());
-		}
-
-		List<string> Destinations() =>
-			row
-				.Substring(row.IndexOf('>') + 1)
-				.Split(',')
-				.Select(x => x.Trim())
-				.ToList();
-	}
-
-
-	public abstract class Module(string Id, string[] Destinations)
-	{
-		public string Id { get; init; } = Id;
-		public string[] Destinations { get; init; } = Destinations;
-
-		public abstract void Receive(Pulse pulse, string from);
-		public abstract void Reset();
-	}
-
-	public class Broadcaster(string Id, string[] Destinations) : Module(Id, Destinations)
-	{
-		public override void Receive(Pulse pulse, string from)
-		{
-			foreach (var module in Destinations)
+			frontier = TakeStep(frontier, visited, rows, neighbours, isValid);
+			if (i % 2 == totalSteps % 2)
 			{
-				ToProcess.Enqueue(new(Id, module, pulse));
-			}
-		}
-
-		public override void Reset() { }
-	}
-
-	public class FlipFlop(string Id, string[] Destinations) : Module(Id, Destinations)
-	{
-		public bool On = false;
-
-		public override void Receive(Pulse pulse, string from)
-		{
-			if (pulse is Pulse.Low)
-			{
-				var newPulse = On ? Pulse.Low : Pulse.High;
-				On = !On;
-				foreach (var module in Destinations)
+				foreach (var point in frontier)
 				{
-					ToProcess.Enqueue(new(Id, module, newPulse));
+					valid.Add(point);
 				}
 			}
 		}
 
-		public override void Reset() =>
-			On = false;
+		return valid.Count;
 	}
 
-	public class Conjuction : Module
+	// finite grid
+	private static List<Point> TakeStep(
+		List<Point> frontier,
+		HashSet<Point> visited,
+		string[] rows,
+		Func<Point, int, int, IEnumerable<Point>> neighbours,
+		Func<Point, string[], bool> isValid
+		)
 	{
-		public bool On = false;
-		private readonly string[] destinations;
-		public Dictionary<string, Pulse> Memory;
+		var nextFrontier = new List<Point>();
 
-		private bool HasPrinted = false;
-
-		public Conjuction(string id, string[] destinations, string[] sources) : base(id, destinations)
+		foreach (var current in frontier)
 		{
-			this.destinations = destinations;
-			Memory = sources.ToDictionary(x => x, x => Pulse.Low);
-		}
-
-		public override void Receive(Pulse pulse, string from)
-		{
-			Memory[from] = pulse;
-			var newPulse = Memory.All(x => x.Value is Pulse.High)
-				? Pulse.Low
-				: Pulse.High;
-
-			if (newPulse is Pulse.Low && !HasPrinted)
+			foreach (var next in neighbours(current, rows.Length, rows[0].Length))
 			{
-				HasPrinted = true;
-				Console.WriteLine($"{Id}: {ButtonPresses}");
-			}
+				if (visited.Contains(next))
+				{
+					continue;
+				}
 
-			foreach (var module in destinations)
-			{
-				ToProcess.Enqueue(new(Id, module, newPulse));
+				if (isValid(next, rows))
+				{
+					visited.Add(next);
+					nextFrontier.Add(next);
+				}
 			}
 		}
+		return nextFrontier;
+	}
 
-		public override void Reset()
+	private static IEnumerable<Point> Neighbours1(Point p, int maxX, int maxY)
+	{
+		if (p.X > 0)
 		{
-			foreach (var key in Memory.Keys)
-			{
-				Memory[key] = Pulse.Low;
-			}
+			yield return new(p.X - 1, p.Y);
+		}
+		if (p.X < maxX - 1)
+		{
+			yield return new(p.X + 1, p.Y);
+		}
+		if (p.Y > 0)
+		{
+			yield return new(p.X, p.Y - 1);
+		}
+		if (p.Y < maxY - 1)
+		{
+			yield return new(p.X, p.Y + 1);
 		}
 	}
 
-	public enum Pulse { Low, High }
-	public enum ModuleType { Broadcaster, FlipFlop, Conjuction }
-	public record WorkItem(string Source, string Destination, Pulse Pulse);
+	private static IEnumerable<Point> Neighbours2(Point p)
+	{
+		yield return new(p.X - 1, p.Y);
+		yield return new(p.X + 1, p.Y);
+		yield return new(p.X, p.Y - 1);
+		yield return new(p.X, p.Y + 1);
+	}
 
-	public record WorkInProgress(ModuleType Type, string Id, List<string> Destinations);
+	private static Point FindStartingLocation(string[] rows)
+	{
+		for (int i = 0; i < rows.Length; i++)
+		{
+			for (int j = 0; j < rows[i].Length; j++)
+			{
+				if (rows[i][j] == STARTING)
+				{
+					return new(i, j);
+				}
+			}
+		}
+		throw new NotImplementedException();
+	}
+
+	record struct Point(int X, int Y);
 }
-
-
