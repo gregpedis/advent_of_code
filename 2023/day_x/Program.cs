@@ -1,3 +1,3 @@
 ﻿using day_x;
 
-Day23.Solve();
+Day12.Solve();

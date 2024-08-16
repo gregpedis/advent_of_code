@@ -1,6 +1,5 @@
 import networkx as nx
 
-
 def make_edges():
     with open("day_25.txt", "rt") as f:
         rows = f.readlines()
@@ -21,8 +20,7 @@ def calculate_centralities(edges):
     G.add_edges_from(edges)
     betweenness_centrality = nx.edge_betweenness_centrality(G)
 
-    # Print the betweenness centrality of each node
-    res = [(n,c) for n,c in betweenness_centrality.items()]
+    res = [(edge,c) for edge,c in betweenness_centrality.items()]
     sorted_res = sorted(res, key=lambda x: x[1])
     return sorted_res
 
@@ -78,5 +76,4 @@ fixed_edges = remove_edges(edges, centralities)
 res = [x for x in disjoint_set(nodes, fixed_edges).values()]
 
 total = res[0] * res[1]
-
 print(total)
