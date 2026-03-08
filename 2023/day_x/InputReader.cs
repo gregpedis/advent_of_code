@@ -2,8 +2,8 @@
 
 internal static class InputReader
 {
-	private const string PREFIX_WIN = """E:\repos\advent_of_code\2023\day_x\input""";
-	private const string PREFIX_WSL = """/home/kenji/repos/advent_of_code/2023/day_x/input""";
+	private const string PREFIX_WIN = """E:\repos\algorithms\advent_of_code\2023\day_x\input""";
+	private const string PREFIX_WSL = """/home/kenji/repos/algorithms/advent_of_code/2023/day_x/input""";
 
 	private static readonly string PREFIX = Environment.OSVersion.Platform == PlatformID.Win32NT
 		? PREFIX_WIN
